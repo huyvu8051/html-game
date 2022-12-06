@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        canvas {
+            background: #eee;
+        }
+
+        html,
+        body {
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="myCanvas"></canvas>
+    <script>
+
+
+
+
+        let upPressed = false
+        let downPressed = false
+        let leftPressed = false
+        let rightPressed = false
+
+        let rightMousePressed = false
+        let leftMousePressed = false
+        let middleMousePressed = false
+
+        document.addEventListener('keydown', keyDownHandler, false)
+        document.addEventListener('keyup', keyUpHandler, false)
+        document.addEventListener('mousemove', mouseMoveHandler, false)
+        document.addEventListener('mouseup', mouseUpHandler, false)
+        document.addEventListener('mousedown', mouseDownHandler, false)
+        document.addEventListener('wheel', wheelHandler, false)
+
+
+
+        window.oncontextmenu = function () {
+            return false
+        }
+
+        function wheelHandler(e) {
+            console.log("wheel");
+            if (e.deltaY > 0) {
+
+            }
+        }
+
+        function mouseUpHandler(e) {
+            switch (e.which) {
+                case 1:
+                    leftMousePressed = false
+                    break;
+                case 2:
+                    middleMousePressed = false
+                    break;
+                case 3:
+                    rightMousePressed = false
+                    break;
+                default:
+
+            }
+        }
+
+
+        function mouseDownHandler(e) {
+            switch (e.which) {
+                case 1:
+                    leftMousePressed = true
+                    break;
+                case 2:
+                    middleMousePressed = true
+                    break;
+                case 3:
+                    rightMousePressed = true
+                    break;
+                default:
+
+            }
+
+        }
+
+        function keyDownHandler(e) {
+            if (e.key == 'w') {
+                upPressed = true
+            }
+            if (e.key == 's') {
+                downPressed = true
+            }
+            if (e.key == 'a') {
+                leftPressed = true
+            }
+            if (e.key == 'd') {
+                rightPressed = true
+            }
+        }
+
+        function keyUpHandler(e) {
+            if (e.key == 'w') {
+                upPressed = false
+            }
+            if (e.key == 's') {
+                downPressed = false
+            }
+            if (e.key == 'a') {
+                leftPressed = false
+            }
+            if (e.key == 'd') {
+                rightPressed = false
+            }
+        }
+
+        const mousePos = {
+            x: 0,
+            y: 0
+        }
+
+
+        class NormalBullet {
+            static reloadTime = 20
+
+            constructor({ x, y, a, b, speed }) {
+                this.x = x
+                this.y = y
+                this.a = a
+                this.speed = speed
+            }
+        }
+
+        class Ship {
+            constructor(x, y, color) {
+                this.x = x
+                this.y = y
+
+                this.height = 40
+                this.length = 40
+
+                if (color) {
+                    this.color = color
+                } else {
+                    this.color = 'red'
+                }
+
+                this.speed = 10
+            }
+        }
+
+        class Enemy {
+            constructor({ x, y }) {
+                this.x = x
+                this.y = y
+            }
+        }
+
+        const fired = new Set()
+
+
+
+        function mouseMoveHandler(e) {
+            mousePos.x = e.clientX - 5
+            mousePos.y = e.clientY - 5
+        }
+
+        function drawMouseAim() {
+            ctx.beginPath()
+            ctx.moveTo(myShip.x + (myShip.length / 2), myShip.y + myShip.height / 2)
+            ctx.lineTo(mousePos.x, mousePos.y)
+            ctx.lineWidth = 1
+            ctx.strokeStyle = '#ff0000'
+            ctx.stroke()
+        }
+
+        const canvas = document.getElementById('myCanvas')
+        canvas.width = window.innerWidth; //document.width is obsolete
+        canvas.height = window.innerHeight; //document.height is obsolete
+
+        const ctx = canvas.getContext('2d')
+
+
+        const myShip = new Ship(50, 50)
+
+        function drawShip({ x, y, height, length, color }) {
+            ctx.beginPath();
+            ctx.rect(x, y, height, length);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.closePath();
+
+        }
+
+
+        function calAngle(A, B) {
+            let AB = {
+                x: B.x - A.x,
+                y: B.y - A.y
+            }
+
+            let OX = {
+                x: 1,
+                y: 0
+            }
+
+            let upper = AB.x * OX.x + AB.y * OX.y
+            let bottom = Math.sqrt(Math.pow(AB.x, 2) + Math.pow(AB.y, 2)) * Math.sqrt(Math.pow(OX.x, 2) + Math.pow(OX.y, 2))
+
+            let angle = Math.acos(upper / bottom)
+            if (AB.y < 0) {
+                angle = -angle
+            }
+            return angle
+        }
+
+
+        let bulletDelay = false
+
+
+
+        function moveShip(ship) {
+            if (upPressed) ship.y -= ship.speed
+            if (downPressed) ship.y += ship.speed
+            if (leftPressed) ship.x -= ship.speed
+            if (rightPressed) ship.x += ship.speed
+        }
+
+
+        function checkFired() {
+            if (leftMousePressed && !bulletDelay) {
+
+                const centerShip = {
+                    x: myShip.x + (myShip.length / 2),
+                    y: myShip.y + (myShip.height / 2)
+                }
+
+                let a = calAngle(centerShip, mousePos)
+
+                let bullet = new NormalBullet({
+                    x: myShip.x + (myShip.length / 2),
+                    y: myShip.y + (myShip.height / 2),
+                    a: a,
+                    speed: 20
+                })
+
+                fired.add(bullet)
+
+                bulletDelay = true
+                setTimeout(() => {
+                    bulletDelay = false
+                }, 100)
+            }
+        }
+
+        function moveBullet(bullet) {
+
+            let hypotenuse = bullet.speed
+
+            let x = bullet.x + hypotenuse * Math.cos(bullet.a)
+            let y = bullet.y + hypotenuse * Math.sin(bullet.a)
+
+            bullet.x = x
+            bullet.y = y
+
+        }
+
+
+        function removeBulletIfTouchEnemy(bullet) {
+
+            let found = null;
+
+            for (const enemy of enemies) {
+                if ((Math.abs(bullet.x - enemy.x) < 10) && (Math.abs(bullet.y - enemy.y) < 10)) {
+                    found = enemy;
+                    break;
+                }
+            }
+
+
+            if (found) {
+                enemies.delete(found)
+                fired.delete(bullet)
+            }
+        }
+
+
+        function removeBulletIfOutScreen(bullet) {
+            if (bullet.x > canvas.width || bullet.x < 0 || bullet.y > canvas.height || bullet.y < 0) {
+                fired.delete(bullet)
+            }
+
+        }
+
+        function drawFired() {
+            for (let bullet of fired) {
+
+                moveBullet(bullet)
+
+                removeBulletIfOutScreen(bullet)
+
+                removeBulletIfTouchEnemy(bullet)
+
+
+                var R = 5
+                ctx.beginPath()
+                ctx.fillStyle = '#00FFFF'
+                ctx.arc(bullet.x, bullet.y, R, 0, 2 * Math.PI, false)
+                ctx.fill()
+                ctx.lineWidth = 5
+                ctx.strokeStyle = '#00FF00'
+                ctx.stroke()
+            }
+        }
+
+
+        const enemies = new Set()
+
+        function drawEnemies() {
+            for (let enemy of enemies) {
+                var R = 10
+                ctx.beginPath()
+                ctx.fillStyle = '#e8bcf0'
+                ctx.arc(enemy.x, enemy.y, R, 0, 2 * Math.PI, false)
+                ctx.fill()
+                ctx.lineWidth = 5
+                ctx.strokeStyle = '#4c00b0'
+                ctx.stroke()
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+            drawMouseAim()
+            drawShip(myShip)
+            moveShip(myShip)
+            checkFired()
+            drawFired()
+
+
+
+            drawEnemies()
+
+        }
+        const drawLoop = setInterval(draw, 10)
+
+        const spawEnemiesInterval = setInterval(() => {
+
+            if (enemies.size < 10) {
+                enemies.add(new Enemy({
+                    x: Math.floor(Math.random() * canvas.width),
+                    y: Math.floor(Math.random() * canvas.height)
+                }))
+            }
+        }, 500);
+    </script>
+</body>
+
+</html>
