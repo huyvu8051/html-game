@@ -136,27 +136,30 @@
         }
 
         class Ship {
-            constructor(x, y, color) {
+
+
+            constructor({ x, y, color, bodyImg, cannonsImg }) {
                 this.x = x
                 this.y = y
-
-                this.height = 40
-                this.length = 40
-
                 if (color) {
                     this.color = color
                 } else {
                     this.color = 'red'
                 }
 
-                this.speed = 10
+                this.speed = 5
+
+                this.bodyImg = bodyImg
+                this.cannonsImg = cannonsImg
+                this.bodyAngle = 69
             }
         }
 
         class Enemy {
-            constructor({ x, y }) {
+            constructor({ x, y, img }) {
                 this.x = x
                 this.y = y
+                this.img = img
             }
         }
 
@@ -171,7 +174,7 @@
 
         function drawMouseAim() {
             ctx.beginPath()
-            ctx.moveTo(myShip.x + (myShip.length / 2), myShip.y + myShip.height / 2)
+            ctx.moveTo(myShip.x, myShip.y)
             ctx.lineTo(mousePos.x, mousePos.y)
             ctx.lineWidth = 1
             ctx.strokeStyle = '#ff0000'
@@ -184,17 +187,59 @@
 
         const ctx = canvas.getContext('2d')
 
+        const greenTankImage = document.createElement('img')
+        greenTankImage.src = './green-tank.png'
 
-        const myShip = new Ship(50, 50)
+        const greenCannonsImg = document.createElement('img')
+        greenCannonsImg.src = './green-cannon.png'
 
-        function drawShip({ x, y, height, length, color }) {
-            ctx.beginPath();
-            ctx.rect(x, y, height, length);
-            ctx.fillStyle = color;
-            ctx.fill();
-            ctx.closePath();
+        const greenBodyImg = document.createElement('img')
+        greenBodyImg.src = './green-body.png'
+
+        const myShip = new Ship({
+            x: 50,
+            y: 50,
+            bodyImg: greenBodyImg,
+            cannonsImg: greenCannonsImg
+        })
+
+        function drawShip({ x, y, height, length, color, bodyImg, cannonsImg, bodyAngle }) {
+            // ctx.beginPath();
+            // ctx.rect(x, y, height, length);
+            // ctx.fillStyle = color;
+            // ctx.fill();
+            // ctx.closePath();
+
+
+
+            let a = calAngle(myShip, mousePos)
+
+            let rotateAngle = a + Math.PI / 2;
+
+
+            ctx.save()
+            ctx.translate(x, y)
+
+            // draw body s
+            ctx.rotate(bodyAngle)
+            ctx.drawImage(bodyImg, 0, 0, bodyImg.width, bodyImg.height, -20, -75 / 2, 40, 55)
+            ctx.rotate(-bodyAngle)
+
+            // draw cannon same direction with mouse
+
+            ctx.rotate(rotateAngle)
+            ctx.drawImage(cannonsImg, 0, 0, cannonsImg.width, cannonsImg.height, -20, -75 / 2, 40, 55)
+
+            ctx.rotate(-rotateAngle)
+
+
+            ctx.restore()
+
+
 
         }
+
+
 
 
         function calAngle(A, B) {
@@ -224,28 +269,56 @@
 
 
         function moveShip(ship) {
-            if (upPressed) ship.y -= ship.speed
-            if (downPressed) ship.y += ship.speed
-            if (leftPressed) ship.x -= ship.speed
-            if (rightPressed) ship.x += ship.speed
+
+
+
+            if (upPressed) {
+                ship.y -= ship.speed
+                ship.bodyAngle = 0
+            }
+            if (downPressed) {
+                ship.y += ship.speed
+                ship.bodyAngle = Math.PI
+            }
+            if (leftPressed) {
+                ship.x -= ship.speed
+                ship.bodyAngle = Math.PI * (3 / 2)
+            }
+            if (rightPressed) {
+                ship.x += ship.speed
+                ship.bodyAngle = Math.PI / 2
+            }
+
+
+            if (upPressed && rightPressed) {
+                ship.bodyAngle = Math.PI / 4
+            }
+
+
+            if (upPressed && leftPressed) {
+                ship.bodyAngle = Math.PI * (7 / 4)
+            }
+
+            if (downPressed && rightPressed) {
+                ship.bodyAngle = Math.PI * (3 / 4)
+            }
+
+            if (downPressed && leftPressed) {
+                ship.bodyAngle = Math.PI * (5 / 4)
+            }
+
         }
 
 
         function checkFired() {
             if (leftMousePressed && !bulletDelay) {
-
-                const centerShip = {
-                    x: myShip.x + (myShip.length / 2),
-                    y: myShip.y + (myShip.height / 2)
-                }
-
-                let a = calAngle(centerShip, mousePos)
+                let a = calAngle(myShip, mousePos)
 
                 let bullet = new NormalBullet({
-                    x: myShip.x + (myShip.length / 2),
-                    y: myShip.y + (myShip.height / 2),
+                    x: myShip.x,
+                    y: myShip.y,
                     a: a,
-                    speed: 20
+                    speed: 10
                 })
 
                 fired.add(bullet)
@@ -270,6 +343,21 @@
         }
 
 
+        const explosionImg = document.createElement('img')
+        explosionImg.src = './explosion.gif'
+
+
+        class Explosion {
+            
+            constructor({ x, y }) {
+                this.x = x
+                this.y = y
+
+                this.img = explosionImg
+            }
+        }
+
+
         function removeBulletIfTouchEnemy(bullet) {
 
             let found = null;
@@ -285,6 +373,7 @@
             if (found) {
                 enemies.delete(found)
                 fired.delete(bullet)
+                explosions.add(new Explosion(found))
             }
         }
 
@@ -322,6 +411,8 @@
 
         function drawEnemies() {
             for (let enemy of enemies) {
+
+
                 var R = 10
                 ctx.beginPath()
                 ctx.fillStyle = '#e8bcf0'
@@ -330,8 +421,28 @@
                 ctx.lineWidth = 5
                 ctx.strokeStyle = '#4c00b0'
                 ctx.stroke()
+
+
+                let img = enemy.img
+
+                let x = enemy.y - (img.height / 2)
+                let y = enemy.x - (img.width / 2)
+                ctx.drawImage(img, 0, 0, img.width, img.height, enemy.x, enemy.y, 20, 20)
             }
         }
+
+        const explosions = new Set()
+
+        function drawExplosion() {
+            for (const explosion of explosions) {
+                ctx.save()
+                ctx.translate(explosion.x, explosion.y)
+                ctx.drawImage(explosion.img, 0, 0, explosion.img.width, explosion.img.height, 0, 0, 100, 100)
+                ctx.restore()
+            }
+        }
+
+
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -341,6 +452,7 @@
             moveShip(myShip)
             checkFired()
             drawFired()
+            drawExplosion()
 
 
 
@@ -351,13 +463,26 @@
 
         const spawEnemiesInterval = setInterval(() => {
 
+            var img = document.createElement('img');
+            img.src = './enemy.png';
+
+
+
             if (enemies.size < 10) {
                 enemies.add(new Enemy({
                     x: Math.floor(Math.random() * canvas.width),
-                    y: Math.floor(Math.random() * canvas.height)
+                    y: Math.floor(Math.random() * canvas.height),
+                    img: img
                 }))
             }
         }, 500);
+
+        // const enemiesMoveInterval = setInterval(() => {
+        //     for(const enemy of enemies){
+        //         enemy.x = Math.floor(Math.random() * canvas.width)
+        //         enemy.y = Math.floor(Math.random() * canvas.height)
+        //     }
+        // }, 2000);
     </script>
 </body>
 
